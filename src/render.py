@@ -77,11 +77,11 @@ def render_markdown(sections: dict, date_str: str) -> str:
         for paper in papers:
             title_cn = paper.get("title_cn", "")
             authors = ", ".join(paper.get("authors", []))
-            abstract = paper.get("abstract", "")
+            summary = paper.get("summary_cn") or paper.get("abstract", "")
             title_display = f"{title_cn}（{paper['title']}）" if title_cn else paper["title"]
             lines.append(f"- **[{title_display}]({paper['url']})** — {authors}")
-            if abstract:
-                lines.append(f"  {abstract}")
+            if summary:
+                lines.append(f"  {summary}")
             lines.append("")
     else:
         lines.append("暂无新论文")

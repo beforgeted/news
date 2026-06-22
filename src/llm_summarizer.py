@@ -172,6 +172,43 @@ def summarize_repos(repos: list[dict]) -> list[dict]:
     return repos
 
 
+def summarize_papers(papers: list[dict]) -> list[dict]:
+    """Generate Chinese summaries for Arxiv paper abstracts via LLM."""
+    if not os.environ.get("DEEPSEEK_API_KEY"):
+        for p in papers:
+            p.setdefault("summary_cn", "")
+        return papers
+
+    for paper in papers:
+        title = paper.get("title", "")
+        abstract = paper.get("abstract", "")
+        if not abstract:
+            paper["summary_cn"] = ""
+            continue
+
+        prompt = f"""论文标题: {title}
+摘要: {abstract[:3000]}
+
+请用约120字中文总结这篇论文：研究什么问题、用什么方法、有什么关键发现。突出对AI Agent/LLM/RAG开发者的参考价值。"""
+
+        try:
+            client, model = _get_client()
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": "你是一个学术论文解读助手，用简洁中文总结论文核心贡献。只输出摘要。"},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=250,
+                temperature=0.3
+            )
+            paper["summary_cn"] = resp.choices[0].message.content.strip()
+        except Exception:
+            paper["summary_cn"] = ""
+
+    return papers
+
+
 def process_articles(posts: list[dict]) -> list[dict]:
     """Process a list of blog posts: filter + summarize via LLM.
 

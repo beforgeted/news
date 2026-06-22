@@ -69,7 +69,8 @@
     {% set paper_title = paper.title_cn ~ "（" ~ paper.title ~ "）" if paper.title_cn else paper.title %}
     <div class="title"><a href="{{ paper.url }}">{{ paper_title }}</a></div>
     <div class="meta">{{ paper.authors | join(', ') }}</div>
-    <div class="desc">{{ paper.abstract }}</div>
+    {% set paper_desc = paper.summary_cn or paper.abstract or "" %}
+    {% if paper_desc %}<div class="desc">{{ paper_desc }}</div>{% endif %}
   </div>
   {% endfor %}
 {% else %}
