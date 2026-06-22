@@ -21,6 +21,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Run tests
+        run: python -m pytest tests/ -v
+
       - name: Run digest
         env:
           SMTP_USER: ${{ secrets.SMTP_USER }}

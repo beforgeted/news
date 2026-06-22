@@ -18,7 +18,7 @@ def test_send_email(mock_smtp_class):
     result = send_email("<h1>Test</h1>", "Subject Line", email_config)
 
     assert result is True
-    mock_smtp_class.assert_called_once_with("smtp.gmail.com", 587)
+    mock_smtp_class.assert_called_once_with("smtp.gmail.com", 587, timeout=30)
     mock_server.starttls.assert_called_once()
     mock_server.login.assert_called_once_with("sender@gmail.com", "secret")
     mock_server.sendmail.assert_called_once()

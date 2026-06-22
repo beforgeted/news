@@ -11,7 +11,7 @@ def send_email(html_content: str, subject: str, email_config: dict) -> bool:
 
     msg.attach(MIMEText(html_content, "html", "utf-8"))
 
-    with smtplib.SMTP(email_config["smtp_host"], email_config["smtp_port"]) as server:
+    with smtplib.SMTP(email_config["smtp_host"], email_config["smtp_port"], timeout=30) as server:
         server.starttls()
         server.login(email_config["smtp_user"], email_config["smtp_pass"])
         server.sendmail(

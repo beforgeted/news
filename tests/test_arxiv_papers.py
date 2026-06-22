@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from src.collectors.arxiv_papers import fetch_papers
 
 
-def make_mock_paper(title, published_days_ago=1):
+def make_mock_paper(title, published_days_ago=0):
     paper = MagicMock()
     paper.title = title
     paper.summary = "This paper introduces a novel approach to LLM reasoning."
@@ -43,7 +43,7 @@ def test_fetch_papers_filters_old_entries(mock_client_class):
     mock_client = MagicMock()
     mock_client_class.return_value = mock_client
     mock_client.results.return_value = [
-        make_mock_paper("Recent Paper", published_days_ago=2),
+        make_mock_paper("Recent Paper", published_days_ago=0),
         make_mock_paper("Old Paper", published_days_ago=30),
     ]
 

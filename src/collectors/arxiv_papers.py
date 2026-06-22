@@ -15,10 +15,10 @@ def fetch_papers(config: dict) -> list[dict]:
     search = arxiv.Search(
         query=query,
         max_results=max_results * 3,
-        sort_by=arxiv.SortCriterion.SubmittedDate
+        sort_by=arxiv.SortCriterion.Relevance
     )
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=1)
     results = []
 
     for paper in client.results(search):

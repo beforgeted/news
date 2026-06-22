@@ -56,7 +56,8 @@ def main():
     update_history(sections)
 
     total = sum(len(sections.get(k, [])) for k in ("github", "blogs", "papers"))
-    print(f"[OK] Digest sent. {total} items, {len(failed_sources)} source(s) failed.")
+    status = "[WARN]" if failed_sources else "[OK]"
+    print(f"{status} Digest sent. {total} items, {len(failed_sources)} source(s) failed.")
 
 
 if __name__ == "__main__":
