@@ -1,0 +1,38 @@
+name: AI Daily Digest
+
+on:
+  schedule:
+    - cron: "0 1 * * *"  # UTC 01:00 = 北京时间 09:00
+  workflow_dispatch:      # 允许手动触发
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run digest
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          RECIPIENT: ${{ secrets.RECIPIENT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python -m src.main
+
+      - name: Cache sent history
+        uses: actions/cache@v4
+        with:
+          path: state/sent.json
+          key: sent-urls-${{ github.run_id }}
+          restore-keys: |
+            sent-urls-
