@@ -195,13 +195,25 @@ def process_articles(posts: list[dict]) -> list[dict]:
 
         # Step 2: Filter
         if not filter_article(title, text):
-            continue  # Skip low-quality content
+            post["summary_cn"] = ""
+            post["title_cn"] = ""
+            print(f"  [FILTERED] {title}")
+            continue
 
         # Step 3: Summarize
         result = summarize_article(title, text)
 
         post["summary_cn"] = result["summary_cn"]
         post["title_cn"] = result["title_cn"]
+        print(f"  [OK] {result['title_cn']}")
         results.append(post)
+
+    # Safety net: if everything was filtered, keep all with original summaries
+    if not results and posts:
+        print(f"  [WARN] All {len(posts)} posts filtered, keeping all with original text.")
+        for p in posts:
+            p.setdefault("title_cn", "")
+            p.setdefault("summary_cn", "")
+        return posts
 
     return results
