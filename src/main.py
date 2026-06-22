@@ -11,7 +11,7 @@ from src.collectors.arxiv_papers import fetch_papers
 from src.digest import merge, update_history, load_history
 from src.render import render_html, render_markdown
 from src.mailer import send_email
-from src.translator import translate_summaries
+from src.llm_summarizer import process_articles
 
 
 def main():
@@ -44,7 +44,10 @@ def main():
 
     blogs = results.get("blogs", [])
     if blogs:
-        blogs = translate_summaries(blogs)
+        print(f"[INFO] Processing {len(blogs)} articles via LLM...")
+        blogs = process_articles(blogs)
+        kept = len(blogs)
+        print(f"[INFO] LLM filter kept {kept} articles.")
 
     sections = merge(
         results.get("github", []),

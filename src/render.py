@@ -49,13 +49,18 @@ def render_markdown(sections: dict, date_str: str) -> str:
     blogs = sections.get("blogs", [])
     if blogs:
         for post in blogs:
-            summary = post.get("summary", "")
+            title_cn = post.get("title_cn", "")
             summary_cn = post.get("summary_cn", "")
-            lines.append(f"- **[{post['title']}]({post['url']})** — {post['source']} ({post['date']})")
+            title_display = post["title"]
+            if title_cn:
+                title_display = f"{title_display} / {title_cn}"
+            lines.append(f"- **[{title_display}]({post['url']})** — {post['source']} ({post['date']})")
             if summary_cn:
                 lines.append(f"  {summary_cn}")
-            elif summary:
-                lines.append(f"  {summary}")
+            else:
+                summary = post.get("summary", "")
+                if summary:
+                    lines.append(f"  {summary}")
             lines.append("")
     else:
         lines.append("暂无新动态")

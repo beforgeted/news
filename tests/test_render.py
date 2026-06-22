@@ -148,6 +148,7 @@ def test_render_markdown_blog_cn_summary():
             {
                 "source": "OpenAI",
                 "title": "GPT-5 Launched",
+                "title_cn": "GPT-5发布",
                 "date": "2026-06-20",
                 "summary": "OpenAI announces GPT-5.",
                 "summary_cn": "OpenAI宣布GPT-5发布。",
@@ -158,4 +159,6 @@ def test_render_markdown_blog_cn_summary():
         "failed_sources": []
     }
     md = render_markdown(sections, "2026-06-22")
+    assert "GPT-5发布" in md
     assert "OpenAI宣布GPT-5发布" in md
+    assert "GPT-5 Launched" in md  # Original title still present
