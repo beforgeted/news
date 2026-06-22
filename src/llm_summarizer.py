@@ -23,8 +23,8 @@ def _get_client() -> OpenAI:
     api_key = os.environ.get("DEEPSEEK_API_KEY", "")
     if not api_key:
         raise RuntimeError("DEEPSEEK_API_KEY not set")
-    base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-    model = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+    base_url = os.environ.get("DEEPSEEK_BASE_URL") or "https://api.deepseek.com"
+    model = os.environ.get("DEEPSEEK_MODEL") or "deepseek-chat"
     return OpenAI(api_key=api_key, base_url=base_url), model
 
 
