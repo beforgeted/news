@@ -3,6 +3,7 @@ from src.main import main
 
 
 @patch("src.main.send_email")
+@patch("src.main.render_markdown")
 @patch("src.main.render_html")
 @patch("src.main.update_history")
 @patch("src.main.load_history")
@@ -17,7 +18,8 @@ def test_main_success_path(
     mock_arxiv,
     mock_load_history,
     mock_update_history,
-    mock_render,
+    mock_render_html,
+    mock_render_md,
     mock_send_email
 ):
     mock_load_config.return_value = {
@@ -36,19 +38,22 @@ def test_main_success_path(
     mock_blogs.return_value = [{"source": "X", "title": "T", "url": "http://b.com"}]
     mock_arxiv.return_value = [{"title": "P", "url": "http://c.com"}]
     mock_load_history.return_value = set()
-    mock_render.return_value = "<html>...</html>"
+    mock_render_html.return_value = "<html>...</html>"
+    mock_render_md.return_value = "# Markdown..."
 
     main()
 
     mock_github.assert_called_once()
     mock_blogs.assert_called_once()
     mock_arxiv.assert_called_once()
-    mock_render.assert_called_once()
+    mock_render_html.assert_called_once()
+    mock_render_md.assert_called_once()
     mock_send_email.assert_called_once()
     mock_update_history.assert_called_once()
 
 
 @patch("src.main.send_email")
+@patch("src.main.render_markdown")
 @patch("src.main.render_html")
 @patch("src.main.update_history")
 @patch("src.main.load_history")
@@ -63,7 +68,8 @@ def test_main_one_collector_fails(
     mock_arxiv,
     mock_load_history,
     mock_update_history,
-    mock_render,
+    mock_render_html,
+    mock_render_md,
     mock_send_email
 ):
     mock_load_config.return_value = {
@@ -76,12 +82,13 @@ def test_main_one_collector_fails(
     mock_blogs.return_value = []
     mock_arxiv.return_value = [{"title": "P", "url": "http://c.com"}]
     mock_load_history.return_value = set()
-    mock_render.return_value = "<html>...</html>"
+    mock_render_html.return_value = "<html>...</html>"
+    mock_render_md.return_value = "# Markdown..."
 
     main()
 
-    # Should still send email despite github failure
-    mock_render.assert_called_once()
-    call_sections = mock_render.call_args[0][0]
+    mock_render_html.assert_called_once()
+    call_sections = mock_render_html.call_args[0][0]
     assert "github" in call_sections["failed_sources"]
     mock_send_email.assert_called_once()
+    mock_render_md.assert_called_once()

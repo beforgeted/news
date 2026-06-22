@@ -1,5 +1,7 @@
 import sys
+import os
 from datetime import datetime
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from src.config import load_config
@@ -7,7 +9,7 @@ from src.collectors.github_trending import fetch_trending_repos
 from src.collectors.rss_blogs import fetch_blog_posts
 from src.collectors.arxiv_papers import fetch_papers
 from src.digest import merge, update_history, load_history
-from src.render import render_html
+from src.render import render_html, render_markdown
 from src.mailer import send_email
 
 
@@ -52,6 +54,15 @@ def main():
     email_config = config.get("email", {})
     subject = f"AI Daily Digest — {date_str}"
     send_email(html, subject, email_config)
+
+    output_dir = config.get("output_dir") or os.path.expandvars(
+        os.environ.get("DIGEST_OUTPUT_DIR", r"C:\Users\ASher\Desktop\每日热点")
+    )
+    md = render_markdown(sections, date_str)
+    md_path = Path(output_dir) / f"AI-Daily-Digest-{date_str}.md"
+    md_path.parent.mkdir(parents=True, exist_ok=True)
+    md_path.write_text(md, encoding="utf-8")
+    print(f"[OK] Markdown saved to {md_path}")
 
     update_history(sections)
 
