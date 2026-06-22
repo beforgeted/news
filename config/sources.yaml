@@ -1,0 +1,31 @@
+github:
+  topics: [ai, llm, agent, large-language-model]
+  max_results: 10
+  lookback_days: 7
+
+blogs:
+  - name: OpenAI
+    type: rss
+    url: https://openai.com/blog/rss.xml
+  - name: Anthropic
+    type: scrape
+    url: https://www.anthropic.com/research
+    selector: "a[href^='/research/']"
+  - name: Google DeepMind
+    type: rss
+    url: https://deepmind.google/blog/rss.xml
+  - name: Meta AI
+    type: rss
+    url: https://ai.meta.com/blog/rss/
+  - name: Hugging Face
+    type: rss
+    url: https://huggingface.co/blog/feed.xml
+
+arxiv:
+  categories: [cs.AI, cs.CL]
+  max_results: 5
+  keywords: [llm, agent, language model, transformer]
+
+email:
+  smtp_host: smtp.gmail.com
+  smtp_port: 587
