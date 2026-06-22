@@ -11,7 +11,7 @@ from src.collectors.arxiv_papers import fetch_papers
 from src.digest import merge, update_history, load_history
 from src.render import render_html, render_markdown
 from src.mailer import send_email
-from src.llm_summarizer import process_articles, translate_items
+from src.llm_summarizer import process_articles, translate_items, summarize_repos
 
 
 def main():
@@ -53,7 +53,8 @@ def main():
             print(f"[INFO] LLM filter kept {len(blogs)} articles.")
 
         if github:
-            print(f"[INFO] Translating {len(github)} repo titles...")
+            print(f"[INFO] Generating summaries for {len(github)} repos...")
+            github = summarize_repos(github)
             github = translate_items(github, key="name")
 
         if papers:

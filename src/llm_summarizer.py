@@ -119,6 +119,50 @@ def summarize_article(title: str, text: str) -> dict:
     return {"title_cn": title_cn, "summary_cn": summary_cn}
 
 
+def summarize_repos(repos: list[dict]) -> list[dict]:
+    """Generate Chinese summaries for GitHub repos via LLM.
+
+    Input: [{name, description, stars, language, topics, url}, ...]
+    Output: same items with added summary_cn field.
+    """
+    if not os.environ.get("DEEPSEEK_API_KEY"):
+        for r in repos:
+            r.setdefault("summary_cn", "")
+        return repos
+
+    for repo in repos:
+        name = repo.get("name", "")
+        desc = repo.get("description", "")
+        stars = repo.get("stars", 0)
+        language = repo.get("language", "N/A")
+        topics = ", ".join(repo.get("topics", [])[:8])
+
+        prompt = f"""项目: {name}
+星数: {stars}
+语言: {language}
+标签: {topics}
+简介: {desc}
+
+请用约80字中文概括这个项目是什么、为什么值得关注。突出其创新点或热门原因。"""
+
+        try:
+            client, model = _get_client()
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": "你是一个技术编辑，擅长用简洁中文介绍开源项目。只输出摘要，不要任何前缀。"},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=200,
+                temperature=0.3
+            )
+            repo["summary_cn"] = resp.choices[0].message.content.strip()
+        except Exception:
+            repo["summary_cn"] = ""
+
+    return repos
+
+
 def process_articles(posts: list[dict]) -> list[dict]:
     """Process a list of blog posts: filter + summarize via LLM.
 

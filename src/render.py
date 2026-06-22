@@ -36,7 +36,10 @@ def render_markdown(sections: dict, date_str: str) -> str:
             new_tag = " 🆕" if repo.get("is_new") else ""
             title_display = f"{name_cn}（{repo['name']}）" if name_cn else repo["name"]
             lines.append(f"- **[{title_display}]({repo['url']})**  ⭐{repo['stars']}  {repo['language']}{new_tag}")
-            if desc:
+            summary = repo.get("summary_cn", "")
+            if summary:
+                lines.append(f"  {summary}")
+            elif desc:
                 lines.append(f"  {desc}")
             if topics:
                 lines.append(f"  {topics}")
