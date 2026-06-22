@@ -5,8 +5,7 @@ import requests
 def fetch_trending_repos(config: dict) -> list[dict]:
     keywords = config.get("keywords", ["ai agent", "llm", "language model", "machine learning"])
     keyword_query = " OR ".join(f'"{kw}"' for kw in keywords)
-    # Search repos with AI keywords, sorted by stars, pushed in the last week
-    query = f"({keyword_query}) pushed:>=2020-01-01"
+    query = keyword_query
 
     url = "https://api.github.com/search/repositories"
     params = {
