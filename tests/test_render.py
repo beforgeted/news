@@ -118,3 +118,44 @@ def test_render_markdown_with_failed():
     md = render_markdown(sections, "2026-06-22")
     assert "github, arxiv" in md
     assert "⚠" in md
+
+
+def test_render_markdown_new_tag():
+    sections = {
+        "github": [
+            {
+                "name": "test/repo",
+                "description": "Fresh project",
+                "stars": 100,
+                "language": "Go",
+                "url": "https://github.com/test/repo",
+                "topics": ["ai"],
+                "is_new": True
+            }
+        ],
+        "blogs": [],
+        "papers": [],
+        "failed_sources": []
+    }
+    md = render_markdown(sections, "2026-06-22")
+    assert "🆕" in md
+
+
+def test_render_markdown_blog_cn_summary():
+    sections = {
+        "github": [],
+        "blogs": [
+            {
+                "source": "OpenAI",
+                "title": "GPT-5 Launched",
+                "date": "2026-06-20",
+                "summary": "OpenAI announces GPT-5.",
+                "summary_cn": "OpenAI宣布GPT-5发布。",
+                "url": "https://openai.com/gpt5"
+            }
+        ],
+        "papers": [],
+        "failed_sources": []
+    }
+    md = render_markdown(sections, "2026-06-22")
+    assert "OpenAI宣布GPT-5发布" in md

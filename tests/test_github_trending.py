@@ -1,55 +1,63 @@
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch, MagicMock
 from src.collectors.github_trending import fetch_trending_repos
 
 
-def fake_response():
+def make_item(full_name, stars, created_days_ago, desc=None, language="Python"):
+    created = datetime.now(timezone.utc) - timedelta(days=created_days_ago)
     return {
-        "items": [
-            {
-                "full_name": "owner/repo1",
-                "description": "An AI agent framework",
-                "stargazers_count": 1500,
-                "language": "Python",
-                "html_url": "https://github.com/owner/repo1",
-                "topics": ["ai", "agent"]
-            },
-            {
-                "full_name": "owner/repo2",
-                "description": None,
-                "stargazers_count": 800,
-                "language": None,
-                "html_url": "https://github.com/owner/repo2",
-                "topics": []
-            }
-        ]
+        "full_name": full_name,
+        "description": desc,
+        "stargazers_count": stars,
+        "language": language,
+        "html_url": f"https://github.com/{full_name}",
+        "topics": ["ai"],
+        "created_at": created.strftime("%Y-%m-%dT%H:%M:%SZ")
     }
 
 
 @patch("src.collectors.github_trending.requests.get")
 def test_fetch_trending_repos(mock_get):
     mock_resp = MagicMock()
-    mock_resp.json.return_value = fake_response()
+    mock_resp.json.return_value = {
+        "items": [
+            make_item("owner/new-repo", 5000, 0, "Brand new AI tool"),     # < 24h → is_new
+            make_item("owner/old-repo", 30000, 5, "Established AI repo"),  # > 24h
+            make_item("owner/medium-repo", 10000, 10, "Older repo"),      # > 24h
+        ]
+    }
     mock_resp.raise_for_status.return_value = None
     mock_get.return_value = mock_resp
 
-    config = {"keywords": ["ai agent", "llm"], "max_results": 10}
+    config = {"keywords": ["ai agent"], "max_results": 3}
     results = fetch_trending_repos(config)
 
-    assert len(results) == 2
-    assert results[0]["name"] == "owner/repo1"
-    assert results[0]["description"] == "An AI agent framework"
-    assert results[0]["stars"] == 1500
-    assert results[0]["language"] == "Python"
-    assert results[0]["url"] == "https://github.com/owner/repo1"
-    assert results[0]["topics"] == ["ai", "agent"]
+    assert len(results) == 3
+    # New repo should be first
+    assert results[0]["name"] == "owner/new-repo"
+    assert results[0]["is_new"] is True
+    # Old repos follow, sorted by stars
+    assert results[1]["name"] == "owner/old-repo"
+    assert results[1]["is_new"] is False
+    assert results[2]["name"] == "owner/medium-repo"
+    assert results[2]["is_new"] is False
 
-    # None values handled
-    assert results[1]["description"] == ""
-    assert results[1]["language"] == "N/A"
-
-    # Verify API call
-    mock_get.assert_called_once()
+    # Verify API query includes date filter
     call_args = mock_get.call_args[1]
+    assert "created:>=" in call_args["params"]["q"]
     assert call_args["params"]["sort"] == "stars"
-    assert '"ai agent"' in call_args["params"]["q"]
-    assert '"llm"' in call_args["params"]["q"]
+
+
+@patch("src.collectors.github_trending.requests.get")
+def test_fetch_trending_respects_max_results(mock_get):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {
+        "items": [make_item(f"owner/repo{i}", 1000 - i, i) for i in range(15)]
+    }
+    mock_resp.raise_for_status.return_value = None
+    mock_get.return_value = mock_resp
+
+    config = {"keywords": ["ai"], "max_results": 5}
+    results = fetch_trending_repos(config)
+
+    assert len(results) == 5

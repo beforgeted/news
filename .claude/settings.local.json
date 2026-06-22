@@ -9,7 +9,10 @@
       "Bash(bash \"C:/Users/ASher/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.0/skills/subagent-driven-development/scripts/review-package\" 7d90db1b368e8f23abf5c496dc53a695a328dbcb 945d74f)",
       "Bash(bash \"C:/Users/ASher/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.0/skills/subagent-driven-development/scripts/review-package\" 945d74f 9595999)",
       "Bash(bash \"C:/Users/ASher/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.0/skills/subagent-driven-development/scripts/review-package\" 945d74f f4411d6)",
-      "Bash(python *)"
+      "Bash(python *)",
+      "Bash(D:/ruanjian/MiniConda/envs/news/python.exe -m pytest tests/ -q)",
+      "Bash(rm -f state/sent.json)",
+      "Bash(D:/ruanjian/MiniConda/envs/news/python.exe -m src.main)"
     ]
   }
 }

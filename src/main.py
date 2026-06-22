@@ -11,6 +11,7 @@ from src.collectors.arxiv_papers import fetch_papers
 from src.digest import merge, update_history, load_history
 from src.render import render_html, render_markdown
 from src.mailer import send_email
+from src.translator import translate_summaries
 
 
 def main():
@@ -41,9 +42,13 @@ def main():
                 results[key] = []
                 failed_sources.append(key)
 
+    blogs = results.get("blogs", [])
+    if blogs:
+        blogs = translate_summaries(blogs)
+
     sections = merge(
         results.get("github", []),
-        results.get("blogs", []),
+        blogs,
         results.get("papers", []),
         history
     )

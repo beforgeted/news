@@ -32,7 +32,8 @@ def render_markdown(sections: dict, date_str: str) -> str:
         for repo in github:
             desc = repo.get("description", "")
             topics = " ".join(f"`{t}`" for t in repo.get("topics", [])[:5])
-            lines.append(f"- **[{repo['name']}]({repo['url']})**  ⭐{repo['stars']}  {repo['language']}")
+            new_tag = " 🆕" if repo.get("is_new") else ""
+            lines.append(f"- **[{repo['name']}]({repo['url']})**  ⭐{repo['stars']}  {repo['language']}{new_tag}")
             if desc:
                 lines.append(f"  {desc}")
             if topics:
@@ -49,8 +50,11 @@ def render_markdown(sections: dict, date_str: str) -> str:
     if blogs:
         for post in blogs:
             summary = post.get("summary", "")
+            summary_cn = post.get("summary_cn", "")
             lines.append(f"- **[{post['title']}]({post['url']})** — {post['source']} ({post['date']})")
-            if summary:
+            if summary_cn:
+                lines.append(f"  {summary_cn}")
+            elif summary:
                 lines.append(f"  {summary}")
             lines.append("")
     else:
