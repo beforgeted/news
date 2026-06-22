@@ -13,6 +13,7 @@
   .item .meta { font-size: 13px; color: #6b7280; }
   .item .desc { font-size: 14px; color: #4b5563; margin-top: 6px; line-height: 1.5; }
   .tag { display: inline-block; background: #dbeafe; color: #1e40af; border-radius: 4px; padding: 2px 8px; font-size: 12px; margin-right: 4px; }
+  .new-badge { color: #16a34a; font-weight: 600; font-size: 12px; }
   .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af; }
   .empty { color: #9ca3af; font-style: italic; padding: 20px; text-align: center; }
   .warning { background: #fef3c7; color: #92400e; padding: 8px 16px; border-radius: 6px; font-size: 13px; margin: 10px 0; }
@@ -31,9 +32,14 @@
 {% if github %}
   {% for repo in github %}
   <div class="item">
-    <div class="title"><a href="{{ repo.url }}">{{ repo.name }}</a></div>
+    {% set title_text = repo.name_cn ~ "（" ~ repo.name ~ "）" if repo.name_cn else repo.name %}
+    <div class="title">
+      <a href="{{ repo.url }}">{{ title_text }}</a>
+      {% if repo.is_new %}<span class="new-badge">🆕</span>{% endif %}
+    </div>
     <div class="meta">⭐ {{ repo.stars }} &middot; {{ repo.language }}</div>
-    {% if repo.description %}<div class="desc">{{ repo.description }}</div>{% endif %}
+    {% set desc = repo.summary_cn or repo.description or "" %}
+    {% if desc %}<div class="desc">{{ desc }}</div>{% endif %}
     {% for tag in repo.topics[:5] %}<span class="tag">{{ tag }}</span>{% endfor %}
   </div>
   {% endfor %}
@@ -45,9 +51,11 @@
 {% if blogs %}
   {% for post in blogs %}
   <div class="item">
-    <div class="title"><a href="{{ post.url }}">{{ post.title }}</a></div>
+    {% set blog_title = post.title_cn ~ "（" ~ post.title ~ "）" if post.title_cn else post.title %}
+    <div class="title"><a href="{{ post.url }}">{{ blog_title }}</a></div>
     <div class="meta">{{ post.source }} &middot; {{ post.date }}</div>
-    {% if post.summary %}<div class="desc">{{ post.summary }}</div>{% endif %}
+    {% set blog_desc = post.summary_cn or post.summary or "" %}
+    {% if blog_desc %}<div class="desc">{{ blog_desc }}</div>{% endif %}
   </div>
   {% endfor %}
 {% else %}
@@ -58,7 +66,8 @@
 {% if papers %}
   {% for paper in papers %}
   <div class="item">
-    <div class="title"><a href="{{ paper.url }}">{{ paper.title }}</a></div>
+    {% set paper_title = paper.title_cn ~ "（" ~ paper.title ~ "）" if paper.title_cn else paper.title %}
+    <div class="title"><a href="{{ paper.url }}">{{ paper_title }}</a></div>
     <div class="meta">{{ paper.authors | join(', ') }}</div>
     <div class="desc">{{ paper.abstract }}</div>
   </div>
