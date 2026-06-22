@@ -27,5 +27,5 @@ arxiv:
   keywords: [llm, agent, language model, transformer]
 
 email:
-  smtp_host: smtp.gmail.com
-  smtp_port: 587
+  smtp_host: smtp.163.com
+  smtp_port: 465
