@@ -30,10 +30,12 @@ def render_markdown(sections: dict, date_str: str) -> str:
     github = sections.get("github", [])
     if github:
         for repo in github:
+            name_cn = repo.get("name_cn", "")
             desc = repo.get("description", "")
             topics = " ".join(f"`{t}`" for t in repo.get("topics", [])[:5])
             new_tag = " 🆕" if repo.get("is_new") else ""
-            lines.append(f"- **[{repo['name']}]({repo['url']})**  ⭐{repo['stars']}  {repo['language']}{new_tag}")
+            title_display = f"{name_cn}（{repo['name']}）" if name_cn else repo["name"]
+            lines.append(f"- **[{title_display}]({repo['url']})**  ⭐{repo['stars']}  {repo['language']}{new_tag}")
             if desc:
                 lines.append(f"  {desc}")
             if topics:
@@ -51,9 +53,7 @@ def render_markdown(sections: dict, date_str: str) -> str:
         for post in blogs:
             title_cn = post.get("title_cn", "")
             summary_cn = post.get("summary_cn", "")
-            title_display = post["title"]
-            if title_cn:
-                title_display = f"{title_display} / {title_cn}"
+            title_display = f"{title_cn}（{post['title']}）" if title_cn else post["title"]
             lines.append(f"- **[{title_display}]({post['url']})** — {post['source']} ({post['date']})")
             if summary_cn:
                 lines.append(f"  {summary_cn}")
@@ -72,9 +72,11 @@ def render_markdown(sections: dict, date_str: str) -> str:
     papers = sections.get("papers", [])
     if papers:
         for paper in papers:
+            title_cn = paper.get("title_cn", "")
             authors = ", ".join(paper.get("authors", []))
             abstract = paper.get("abstract", "")
-            lines.append(f"- **[{paper['title']}]({paper['url']})** — {authors}")
+            title_display = f"{title_cn}（{paper['title']}）" if title_cn else paper["title"]
+            lines.append(f"- **[{title_display}]({paper['url']})** — {authors}")
             if abstract:
                 lines.append(f"  {abstract}")
             lines.append("")

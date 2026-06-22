@@ -28,8 +28,39 @@ def _get_client() -> OpenAI:
     return OpenAI(api_key=api_key, base_url=base_url), model
 
 
-def _get_model() -> str:
-    return os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+def translate_title(title: str) -> str:
+    """Translate a single title to Chinese. Returns '' on failure."""
+    try:
+        client, model = _get_client()
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "将以下英文标题翻译为中文，只输出翻译，不要任何解释。"},
+                {"role": "user", "content": title}
+            ],
+            max_tokens=80,
+            temperature=0
+        )
+        result = resp.choices[0].message.content.strip()
+        return result.strip('"\'')
+    except Exception:
+        return ""
+
+
+def translate_items(items: list[dict], key: str = "title") -> list[dict]:
+    """Batch translate a specific key in a list of dicts. Adds {key}_cn field."""
+    if not os.environ.get("DEEPSEEK_API_KEY"):
+        for item in items:
+            item.setdefault(f"{key}_cn", "")
+        return items
+
+    for item in items:
+        text = item.get(key, "")
+        if text:
+            item[f"{key}_cn"] = translate_title(text)
+        else:
+            item.setdefault(f"{key}_cn", "")
+    return items
 
 
 def filter_article(title: str, text: str) -> bool:

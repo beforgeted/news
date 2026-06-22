@@ -11,7 +11,7 @@ from src.collectors.arxiv_papers import fetch_papers
 from src.digest import merge, update_history, load_history
 from src.render import render_html, render_markdown
 from src.mailer import send_email
-from src.llm_summarizer import process_articles
+from src.llm_summarizer import process_articles, translate_items
 
 
 def main():
@@ -43,18 +43,24 @@ def main():
                 failed_sources.append(key)
 
     blogs = results.get("blogs", [])
-    if blogs:
-        print(f"[INFO] Processing {len(blogs)} articles via LLM...")
-        blogs = process_articles(blogs)
-        kept = len(blogs)
-        print(f"[INFO] LLM filter kept {kept} articles.")
+    github = results.get("github", [])
+    papers = results.get("papers", [])
 
-    sections = merge(
-        results.get("github", []),
-        blogs,
-        results.get("papers", []),
-        history
-    )
+    if os.environ.get("DEEPSEEK_API_KEY"):
+        if blogs:
+            print(f"[INFO] Processing {len(blogs)} blog articles via LLM...")
+            blogs = process_articles(blogs)
+            print(f"[INFO] LLM filter kept {len(blogs)} articles.")
+
+        if github:
+            print(f"[INFO] Translating {len(github)} repo titles...")
+            github = translate_items(github, key="name")
+
+        if papers:
+            print(f"[INFO] Translating {len(papers)} paper titles...")
+            papers = translate_items(papers, key="title")
+
+    sections = merge(github, blogs, papers, history)
     sections["failed_sources"] = failed_sources
 
     html = render_html(sections, date_str)
