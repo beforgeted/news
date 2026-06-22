@@ -23,16 +23,22 @@ def _get_client() -> OpenAI:
     api_key = os.environ.get("DEEPSEEK_API_KEY", "")
     if not api_key:
         raise RuntimeError("DEEPSEEK_API_KEY not set")
-    return OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+    base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    model = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+    return OpenAI(api_key=api_key, base_url=base_url), model
+
+
+def _get_model() -> str:
+    return os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
 
 
 def filter_article(title: str, text: str) -> bool:
     """Return True if the article is worth including."""
     content = f"标题: {title}\n\n正文片段: {text[:1000]}"
     try:
-        client = _get_client()
+        client, model = _get_client()
         resp = client.chat.completions.create(
-            model="deepseek-chat",
+            model=model,
             messages=[
                 {"role": "system", "content": SYSTEM_FILTER},
                 {"role": "user", "content": content}
@@ -50,9 +56,9 @@ def summarize_article(title: str, text: str) -> dict:
     # Truncate to ~4000 chars for cost control
     content = f"标题: {title}\n\n正文: {text[:4000]}"
     try:
-        client = _get_client()
+        client, model = _get_client()
         resp = client.chat.completions.create(
-            model="deepseek-chat",
+            model=model,
             messages=[
                 {"role": "system", "content": SYSTEM_SUMMARIZE},
                 {"role": "user", "content": content}
@@ -64,7 +70,7 @@ def summarize_article(title: str, text: str) -> dict:
 
         # Also get a Chinese title
         resp2 = client.chat.completions.create(
-            model="deepseek-chat",
+            model=model,
             messages=[
                 {"role": "system", "content": "将以下英文标题翻译为中文，只输出翻译。"},
                 {"role": "user", "content": title}
