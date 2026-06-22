@@ -1,4 +1,3 @@
-import json
 from unittest.mock import patch, MagicMock
 from src.collectors.github_trending import fetch_trending_repos
 
@@ -33,7 +32,7 @@ def test_fetch_trending_repos(mock_get):
     mock_resp.raise_for_status.return_value = None
     mock_get.return_value = mock_resp
 
-    config = {"topics": ["ai", "llm"], "max_results": 10, "lookback_days": 7}
+    config = {"keywords": ["ai agent", "llm"], "max_results": 10}
     results = fetch_trending_repos(config)
 
     assert len(results) == 2
@@ -52,4 +51,5 @@ def test_fetch_trending_repos(mock_get):
     mock_get.assert_called_once()
     call_args = mock_get.call_args[1]
     assert call_args["params"]["sort"] == "stars"
-    assert "topic:ai" in call_args["params"]["q"]
+    assert '"ai agent"' in call_args["params"]["q"]
+    assert '"llm"' in call_args["params"]["q"]

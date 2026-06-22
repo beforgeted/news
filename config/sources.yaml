@@ -1,7 +1,6 @@
 github:
-  topics: [ai, llm, agent, large-language-model]
+  keywords: [ai agent, llm, language model, machine learning, rag, prompt engineering]
   max_results: 10
-  lookback_days: 7
 
 blogs:
   - name: OpenAI

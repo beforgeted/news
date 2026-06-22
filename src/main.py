@@ -52,8 +52,12 @@ def main():
     html = render_html(sections, date_str)
 
     email_config = config.get("email", {})
-    subject = f"AI Daily Digest — {date_str}"
-    send_email(html, subject, email_config)
+    if email_config.get("smtp_user") and email_config.get("smtp_pass"):
+        subject = f"AI Daily Digest — {date_str}"
+        send_email(html, subject, email_config)
+        print("[OK] Email sent.")
+    else:
+        print("[INFO] Email skipped (SMTP not configured).")
 
     output_dir = config.get("output_dir") or os.path.expandvars(
         os.environ.get("DIGEST_OUTPUT_DIR", r"C:\Users\ASher\Desktop\每日热点")

@@ -30,7 +30,7 @@ def test_main_success_path(
             "smtp_pass": "p",
             "recipient": "r@test.com"
         },
-        "github": {"topics": ["ai"]},
+        "github": {"keywords": ["ai agent"]},
         "blogs": [],
         "arxiv": {"keywords": ["llm"]}
     }
@@ -74,7 +74,7 @@ def test_main_one_collector_fails(
 ):
     mock_load_config.return_value = {
         "email": {"smtp_host": "h", "smtp_port": 587, "smtp_user": "u", "smtp_pass": "p", "recipient": "r"},
-        "github": {"topics": ["ai"]},
+        "github": {"keywords": ["ai agent"]},
         "blogs": [],
         "arxiv": {"keywords": ["llm"]}
     }
@@ -92,3 +92,44 @@ def test_main_one_collector_fails(
     assert "github" in call_sections["failed_sources"]
     mock_send_email.assert_called_once()
     mock_render_md.assert_called_once()
+
+
+@patch("src.main.send_email")
+@patch("src.main.render_markdown")
+@patch("src.main.render_html")
+@patch("src.main.update_history")
+@patch("src.main.load_history")
+@patch("src.main.fetch_papers")
+@patch("src.main.fetch_blog_posts")
+@patch("src.main.fetch_trending_repos")
+@patch("src.main.load_config")
+def test_main_skips_email_when_not_configured(
+    mock_load_config,
+    mock_github,
+    mock_blogs,
+    mock_arxiv,
+    mock_load_history,
+    mock_update_history,
+    mock_render_html,
+    mock_render_md,
+    mock_send_email
+):
+    mock_load_config.return_value = {
+        "email": {"smtp_host": "h", "smtp_port": 587},  # no smtp_user or smtp_pass
+        "github": {"keywords": ["ai agent"]},
+        "blogs": [],
+        "arxiv": {"keywords": ["llm"]}
+    }
+    mock_github.return_value = [{"name": "repo", "url": "http://a.com"}]
+    mock_blogs.return_value = []
+    mock_arxiv.return_value = []
+    mock_load_history.return_value = set()
+    mock_render_html.return_value = "<html>...</html>"
+    mock_render_md.return_value = "# Markdown..."
+
+    main()
+
+    mock_render_html.assert_called_once()
+    mock_render_md.assert_called_once()
+    mock_send_email.assert_not_called()  # Email should be skipped
+    mock_update_history.assert_called_once()

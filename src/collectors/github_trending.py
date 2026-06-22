@@ -1,14 +1,13 @@
 import os
 import requests
-from datetime import datetime, timedelta, timezone
 
 
 def fetch_trending_repos(config: dict) -> list[dict]:
-    topics = " OR ".join(f"topic:{t}" for t in config["topics"])
-    lookback = config.get("lookback_days", 7)
-    date_since = (datetime.now(timezone.utc) - timedelta(days=lookback)).strftime("%Y-%m-%d")
+    keywords = config.get("keywords", ["ai agent", "llm", "language model", "machine learning"])
+    keyword_query = " OR ".join(f'"{kw}"' for kw in keywords)
+    # Search repos with AI keywords, sorted by stars, pushed in the last week
+    query = f"({keyword_query}) pushed:>=2020-01-01"
 
-    query = f"({topics}) created:>={date_since}"
     url = "https://api.github.com/search/repositories"
     params = {
         "q": query,
