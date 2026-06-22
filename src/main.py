@@ -76,14 +76,16 @@ def main():
     else:
         print("[INFO] Email skipped (SMTP not configured).")
 
-    output_dir = config.get("output_dir") or os.path.expandvars(
-        os.environ.get("DIGEST_OUTPUT_DIR", r"C:\Users\ASher\Desktop\每日热点")
-    )
-    md = render_markdown(sections, date_str)
-    md_path = Path(output_dir) / f"AI-Daily-Digest-{date_str}.md"
-    md_path.parent.mkdir(parents=True, exist_ok=True)
-    md_path.write_text(md, encoding="utf-8")
-    print(f"[OK] Markdown saved to {md_path}")
+    output_dir = os.environ.get("DIGEST_OUTPUT_DIR", "")
+    if output_dir:
+        output_dir = os.path.expandvars(output_dir)
+        md = render_markdown(sections, date_str)
+        md_path = Path(output_dir) / f"AI-Daily-Digest-{date_str}.md"
+        md_path.parent.mkdir(parents=True, exist_ok=True)
+        md_path.write_text(md, encoding="utf-8")
+        print(f"[OK] Markdown saved to {md_path}")
+    else:
+        print("[INFO] Markdown skipped (DIGEST_OUTPUT_DIR not set).")
 
     update_history(sections)
 

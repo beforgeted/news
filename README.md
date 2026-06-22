@@ -44,8 +44,9 @@ python -m src.main
 | `SMTP_USER` | 发件邮箱 | 仅邮件推送 |
 | `SMTP_PASS` | 邮箱授权码 | 仅邮件推送 |
 | `RECIPIENT` | 收件邮箱 | 仅邮件推送 |
+| `DIGEST_OUTPUT_DIR` | Markdown 输出目录，不配则不保存本地文件 | 否 |
 
-不配置 SMTP 时，仅输出 Markdown 到本地桌面（路径可配）。
+不配置 SMTP 时仅输出 Markdown 到本地文件；两者都不配则仅打印终端日志。
 
 ## GitHub Actions 部署
 

@@ -14,7 +14,7 @@ def _cfg(**overrides):
     return c
 
 
-@patch.dict(os.environ, {"DEEPSEEK_API_KEY": "sk-test"})
+@patch.dict(os.environ, {"DEEPSEEK_API_KEY": "sk-test", "DIGEST_OUTPUT_DIR": "/tmp/test"})
 @patch("src.main.send_email")
 @patch("src.main.generate_highlight")
 @patch("src.main.translate_items")
@@ -88,4 +88,4 @@ def test_main_no_llm_key(
     mock_tr.assert_not_called()
     mock_hl.assert_called_once()  # Called but returns "" without API key
     mock_email.assert_not_called()
-    mock_md.assert_called_once()
+    mock_md.assert_not_called()  # No DIGEST_OUTPUT_DIR set
