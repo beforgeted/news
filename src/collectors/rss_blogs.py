@@ -2,6 +2,7 @@ import re
 import requests
 import feedparser
 from datetime import datetime, timezone
+from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
 
@@ -43,9 +44,11 @@ def _parse_entry(source: str, entry) -> dict:
 
     raw = entry.get("summary", entry.get("description", "")) or ""
     summary = re.sub(r"<[^>]+>", "", raw)
-    summary = re.sub(r"\s+", " ", summary).strip()[:200]
-    if len(raw) > 200:
-        summary += "..."
+    summary = re.sub(r"\s+", " ", summary).strip()
+    if len(summary) > 200:
+        summary = summary[:200] + "..."
+    else:
+        summary = summary[:200]
 
     return {
         "source": source,
@@ -68,7 +71,7 @@ def _fetch_scrape(blog: dict) -> list[dict]:
     for link in soup.select(blog["selector"])[:5]:
         url = link.get("href", "")
         if url and not url.startswith("http"):
-            url = f"https://www.anthropic.com{url}"
+            url = urljoin(blog["url"], url)
         title = link.get_text(strip=True)
         if title:
             items.append({

@@ -5,7 +5,6 @@ from src.collectors.rss_blogs import fetch_blog_posts
 
 def make_feed_entry(title, link, published_str):
     import time
-    from email.utils import formatdate
 
     entry = MagicMock()
     entry.title = title
