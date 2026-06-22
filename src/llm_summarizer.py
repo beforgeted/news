@@ -1,21 +1,30 @@
 import os
 from openai import OpenAI
 
-SYSTEM_FILTER = """你是一个 AI 新闻编辑。判断以下网页内容是否值得收录到每日 AI 摘要中。
+SYSTEM_FILTER = """你是一个技术博客筛选助手，目标是帮助一名正在学习 AI Agent、LLM 应用开发、后端工程化、MCP、RAG、CI/CD 和开源项目实践的开发者，从大量博客中筛选值得阅读的内容。
 
-标准：
-- 与 AI、LLM、Agent、机器学习 相关
-- 有实质性内容（不是团队介绍、招聘、导航页）
-- 是新发布的内容（不是陈旧归档）
+请根据以下标准评估文章是否值得保留：
+
+1. 技术相关性：是否与 AI、Agent、LLM、RAG、MCP、后端、工程化、开源项目、系统架构相关。
+2. 学习价值：是否包含原理解释、架构设计、源码分析、工程实践、踩坑经验或性能优化。
+3. 新颖度：是否涉及新技术、新版本、新工具、新框架或近期热点。
+4. 实践价值：是否能用于实际项目、Demo、面试准备或技术方案设计。
+5. 可信度：是否来自官方博客、知名团队、开源项目作者、论文作者或有实践经验的工程师。
+
+请注意：
+- 不要因为标题热门就保留。
+- 不要保留纯营销、纯观点、缺少技术细节的文章。
+- 如果文章只是重复新闻，没有额外分析，也应降低分数。
+- 如果文章能帮助理解技术趋势、改进项目架构、学习工程实践，应提高分数。
 
 只回答 YES 或 NO。"""
 
-SYSTEM_SUMMARIZE = """你是一个专业的技术编辑。根据以下文章内容，用中文撰写一段约 150 字的摘要。
+SYSTEM_SUMMARIZE = """你是一个技术学习助手。根据以下文章内容，用中文撰写一段约 150 字的摘要，帮助一名学习 AI Agent、LLM、后端工程化、MCP、RAG 的开发者快速判断是否值得阅读。
 
 要求：
-- 抓住文章核心发现或观点
-- 语言简洁专业
-- 只输出摘要，不要任何前缀或后缀
+- 提炼文章核心技术内容：讲了什么、用了什么技术栈、解决了什么问题
+- 指出对开发者的实践价值：能学到什么、能否用于项目
+- 语言简洁专业，只输出摘要本身
 - 如果文章包含多个要点，选最重要的 2-3 个"""
 
 
@@ -65,7 +74,7 @@ def translate_items(items: list[dict], key: str = "title") -> list[dict]:
 
 def filter_article(title: str, text: str) -> bool:
     """Return True if the article is worth including."""
-    content = f"标题: {title}\n\n正文片段: {text[:1000]}"
+    content = f"标题: {title}\n\n正文片段: {text[:2000]}"
     try:
         client, model = _get_client()
         resp = client.chat.completions.create(
