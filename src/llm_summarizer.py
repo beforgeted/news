@@ -1,4 +1,5 @@
 import os
+import time
 from openai import OpenAI
 
 SYSTEM_FILTER = """你是一个技术博客筛选助手，目标是帮助一名正在学习 AI Agent、LLM 应用开发、后端工程化、MCP、RAG、CI/CD 和开源项目实践的开发者，从大量博客中筛选值得阅读的内容。
@@ -40,9 +41,7 @@ def _get_client() -> OpenAI:
 def translate_title(title: str) -> str:
     """Translate a single title to Chinese. Returns '' on failure."""
     try:
-        client, model = _get_client()
-        resp = client.chat.completions.create(
-            model=model,
+        result = _call_llm_with_retry(
             messages=[
                 {"role": "system", "content": "将以下英文标题翻译为中文，只输出翻译，不要任何解释。"},
                 {"role": "user", "content": title}
@@ -50,7 +49,6 @@ def translate_title(title: str) -> str:
             max_tokens=80,
             temperature=0
         )
-        result = resp.choices[0].message.content.strip()
         return result.strip('"\'')
     except Exception:
         return ""
@@ -76,9 +74,7 @@ def filter_article(title: str, text: str) -> bool:
     """Return True if the article is worth including."""
     content = f"标题: {title}\n\n正文片段: {text[:2000]}"
     try:
-        client, model = _get_client()
-        resp = client.chat.completions.create(
-            model=model,
+        result = _call_llm_with_retry(
             messages=[
                 {"role": "system", "content": SYSTEM_FILTER},
                 {"role": "user", "content": content}
@@ -86,7 +82,7 @@ def filter_article(title: str, text: str) -> bool:
             max_tokens=5,
             temperature=0
         )
-        return "YES" in resp.choices[0].message.content.upper()
+        return "YES" in result.upper()
     except Exception:
         return True  # On failure, include by default
 
@@ -96,9 +92,7 @@ def summarize_article(title: str, text: str) -> dict:
     # Truncate to ~4000 chars for cost control
     content = f"标题: {title}\n\n正文: {text[:4000]}"
     try:
-        client, model = _get_client()
-        resp = client.chat.completions.create(
-            model=model,
+        summary_cn = _call_llm_with_retry(
             messages=[
                 {"role": "system", "content": SYSTEM_SUMMARIZE},
                 {"role": "user", "content": content}
@@ -106,11 +100,9 @@ def summarize_article(title: str, text: str) -> dict:
             max_tokens=300,
             temperature=0.3
         )
-        summary_cn = resp.choices[0].message.content.strip()
 
         # Also get a Chinese title
-        resp2 = client.chat.completions.create(
-            model=model,
+        title_cn = _call_llm_with_retry(
             messages=[
                 {"role": "system", "content": "将以下英文标题翻译为中文，只输出翻译。"},
                 {"role": "user", "content": title}
@@ -118,14 +110,31 @@ def summarize_article(title: str, text: str) -> dict:
             max_tokens=50,
             temperature=0
         )
-        title_cn = resp2.choices[0].message.content.strip()
-        # Remove quotes that LLM sometimes adds
         title_cn = title_cn.strip('"\'')
 
     except Exception:
         return {"title_cn": "", "summary_cn": ""}
 
     return {"title_cn": title_cn, "summary_cn": summary_cn}
+
+
+def _call_llm_with_retry(messages, max_tokens, temperature, max_retries=3):
+    """Call LLM with retry and backoff on rate limit."""
+    client, model = _get_client()
+    for attempt in range(max_retries):
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature
+            )
+            return resp.choices[0].message.content.strip()
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)  # 1s, 2s, 4s
+            else:
+                raise e
 
 
 def summarize_repos(repos: list[dict]) -> list[dict]:
@@ -155,9 +164,7 @@ def summarize_repos(repos: list[dict]) -> list[dict]:
 请用约80字中文概括这个项目是什么、为什么值得关注。突出其创新点或热门原因。"""
 
         try:
-            client, model = _get_client()
-            resp = client.chat.completions.create(
-                model=model,
+            repo["summary_cn"] = _call_llm_with_retry(
                 messages=[
                     {"role": "system", "content": "你是一个技术编辑，擅长用简洁中文介绍开源项目。只输出摘要，不要任何前缀。"},
                     {"role": "user", "content": prompt}
@@ -165,8 +172,8 @@ def summarize_repos(repos: list[dict]) -> list[dict]:
                 max_tokens=200,
                 temperature=0.3
             )
-            repo["summary_cn"] = resp.choices[0].message.content.strip()
-        except Exception:
+        except Exception as e:
+            print(f"  [WARN] Repo summary failed for {name}: {e}")
             repo["summary_cn"] = ""
 
     return repos
@@ -192,9 +199,7 @@ def summarize_papers(papers: list[dict]) -> list[dict]:
 请用约120字中文总结这篇论文：研究什么问题、用什么方法、有什么关键发现。突出对AI Agent/LLM/RAG开发者的参考价值。"""
 
         try:
-            client, model = _get_client()
-            resp = client.chat.completions.create(
-                model=model,
+            paper["summary_cn"] = _call_llm_with_retry(
                 messages=[
                     {"role": "system", "content": "你是一个学术论文解读助手，用简洁中文总结论文核心贡献。只输出摘要。"},
                     {"role": "user", "content": prompt}
@@ -202,7 +207,6 @@ def summarize_papers(papers: list[dict]) -> list[dict]:
                 max_tokens=250,
                 temperature=0.3
             )
-            paper["summary_cn"] = resp.choices[0].message.content.strip()
         except Exception:
             paper["summary_cn"] = ""
 
