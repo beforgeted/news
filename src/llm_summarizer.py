@@ -219,9 +219,58 @@ def process_articles(posts: list[dict]) -> list[dict]:
     # Sort by score descending
     scored.sort(key=lambda p: p.get("score", 0), reverse=True)
 
-    # Keep only articles above threshold, cap at MAX_ARTICLES
     kept = [p for p in scored if p.get("score", 0) >= MIN_SCORE][:MAX_ARTICLES]
     dropped = len(scored) - len(kept)
     print(f"  [INFO] Kept {len(kept)}, dropped {dropped} (threshold={MIN_SCORE})")
 
     return kept
+
+
+def generate_highlight(sections: dict) -> str:
+    """Generate a 2-3 sentence daily highlight based on all content."""
+    if not os.environ.get("DEEPSEEK_API_KEY"):
+        return ""
+
+    blog_count = len(sections.get("blogs", []))
+    gh_count = len(sections.get("github", []))
+    paper_count = len(sections.get("papers", []))
+
+    if blog_count + gh_count + paper_count == 0:
+        return ""
+
+    # Build context from top items
+    lines = [f"今日共筛选 {blog_count} 篇博客、{gh_count} 个 GitHub 项目、{paper_count} 篇论文。"]
+
+    top_blogs = sections.get("blogs", [])[:3]
+    if top_blogs:
+        lines.append("重点博客:")
+        for b in top_blogs:
+            title = b.get("title_cn") or b.get("title", "")
+            score = b.get("score", "?")
+            lines.append(f"  [{score}分] {title}")
+
+    top_repos = sections.get("github", [])[:2]
+    if top_repos:
+        lines.append("热门项目:")
+        for r in top_repos:
+            name = r.get("name", "")
+            stars = r.get("stars", 0)
+            lines.append(f"  {name} ({stars}⭐)")
+
+    context = "\n".join(lines)
+    prompt = f"""{context}
+
+请用 3 句话总结今日 AI 技术动态，重点推荐 2-3 篇最值得读的内容。语言简洁有洞察力，约 100-150 字。"""
+
+    try:
+        result = _call_llm_with_retry(
+            messages=[
+                {"role": "system", "content": "你是一个 AI 技术编辑，擅长用简洁中文总结每日技术动态。只输出总结，不要任何前缀。"},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=250,
+            temperature=0.5
+        )
+        return result
+    except Exception:
+        return ""

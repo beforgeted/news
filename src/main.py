@@ -11,7 +11,7 @@ from src.collectors.arxiv_papers import fetch_papers
 from src.digest import merge, update_history, load_history
 from src.render import render_html, render_markdown
 from src.mailer import send_email
-from src.llm_summarizer import process_articles, translate_items, summarize_repos, summarize_papers
+from src.llm_summarizer import process_articles, translate_items, summarize_repos, summarize_papers, generate_highlight
 
 
 def main():
@@ -64,6 +64,7 @@ def main():
 
     sections = merge(github, blogs, papers, history)
     sections["failed_sources"] = failed_sources
+    sections["highlight"] = generate_highlight(sections)
 
     html = render_html(sections, date_str)
 

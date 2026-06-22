@@ -9,6 +9,7 @@ def render_html(sections: dict, date_str: str) -> str:
     template = env.get_template("email.html")
     return template.render(
         date=date_str,
+        highlight=sections.get("highlight", ""),
         github=sections.get("github", []),
         blogs=sections.get("blogs", []),
         papers=sections.get("papers", []),
@@ -18,6 +19,11 @@ def render_html(sections: dict, date_str: str) -> str:
 
 def render_markdown(sections: dict, date_str: str) -> str:
     lines = [f"# AI 每日摘要 — {date_str}", ""]
+
+    highlight = sections.get("highlight", "")
+    if highlight:
+        lines.append(f"> 📋 **今日导读**  {highlight}")
+        lines.append("")
 
     failed = sections.get("failed_sources", [])
     if failed:
