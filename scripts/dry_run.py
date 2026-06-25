@@ -7,9 +7,12 @@ config = load_config()
 
 print("=== GitHub Trending ===")
 try:
-    repos = fetch_trending_repos(config["github"])
-    print(f"  Got {len(repos)} repos")
-    for r in repos[:3]:
+    github = fetch_trending_repos(config["github"])
+    print(f"  Weekly trending: {len(github['trending'])} repos")
+    for r in github["trending"][:3]:
+        print(f'  - {r["name"]}  +{r.get("stars_gained", 0)} this week')
+    print(f"  Monthly active: {len(github['active'])} repos")
+    for r in github["active"][:3]:
         print(f'  - {r["name"]}  stars={r["stars"]}  {r["language"]}')
 except Exception as e:
     print(f"  ERROR: {e}")

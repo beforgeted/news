@@ -3,9 +3,10 @@ sys.path.insert(0, "D:/Project/news")
 from src.render import render_markdown
 
 sections = {
-    "github": [
-        {"name": "test/repo", "description": "A cool AI agent framework", "stars": 1200, "language": "Python", "url": "https://github.com/test/repo", "topics": ["ai", "llm", "agent"]}
+    "github_trending": [
+        {"name": "test/repo", "description": "A cool AI agent framework", "stars": 1200, "stars_gained": 300, "language": "Python", "url": "https://github.com/test/repo", "topics": ["ai", "llm", "agent"]}
     ],
+    "github_active": [],
     "blogs": [
         {"source": "OpenAI", "title": "GPT-5 Launched", "date": "2026-06-20", "summary": "OpenAI announces GPT-5 with breakthrough reasoning.", "url": "https://openai.com/gpt5"}
     ],

@@ -5,45 +5,52 @@ from src.digest import merge, load_history, save_history, extract_urls
 
 
 def test_merge_deduplicates_by_url():
-    github = [
-        {"name": "repo1", "url": "https://github.com/a/b", "stars": 100},
-        {"name": "repo2", "url": "https://github.com/a/b", "stars": 50},  # duplicate URL
-        {"name": "repo3", "url": "https://github.com/c/d", "stars": 200},
-    ]
+    github = {
+        "trending": [
+            {"name": "repo1", "url": "https://github.com/a/b", "stars": 100},
+            {"name": "repo2", "url": "https://github.com/a/b", "stars": 50},
+        ],
+        "active": [
+            {"name": "repo3", "url": "https://github.com/c/d", "stars": 200},
+        ],
+    }
     blogs = [
         {"source": "OpenAI", "title": "Post 1", "url": "https://openai.com/1"},
-        {"source": "OpenAI", "title": "Post 2", "url": "https://openai.com/1"},  # duplicate
+        {"source": "OpenAI", "title": "Post 2", "url": "https://openai.com/1"},
     ]
-    papers = [
-        {"title": "Paper 1", "url": "https://arxiv.org/1"},
-    ]
+    papers = [{"title": "Paper 1", "url": "https://arxiv.org/1"}]
 
     sections = merge(github, blogs, papers, history=set())
 
-    assert len(sections["github"]) == 2
-    assert sections["github"][0]["name"] == "repo1"
-    assert sections["github"][1]["name"] == "repo3"
+    assert len(sections["github_trending"]) == 1
+    assert sections["github_trending"][0]["name"] == "repo1"
+    assert len(sections["github_active"]) == 1
     assert len(sections["blogs"]) == 1
     assert len(sections["papers"]) == 1
 
 
 def test_merge_filters_history():
-    history = {"https://github.com/a/b", "https://openai.com/1"}
+    history = {"https://openai.com/1"}
 
-    github = [{"name": "repo1", "url": "https://github.com/a/b"}]
+    github = {
+        "trending": [{"name": "repo1", "url": "https://github.com/a/b"}],
+        "active": [{"name": "repo2", "url": "https://github.com/c/d"}],
+    }
     blogs = [{"source": "OpenAI", "title": "Post 1", "url": "https://openai.com/1"}]
     papers = [{"title": "Paper 1", "url": "https://arxiv.org/1"}]
 
     sections = merge(github, blogs, papers, history=history)
 
-    assert len(sections["github"]) == 0
+    assert len(sections["github_trending"]) == 1
+    assert len(sections["github_active"]) == 1
     assert len(sections["blogs"]) == 0
     assert len(sections["papers"]) == 1
 
 
 def test_merge_handles_empty_inputs():
-    sections = merge([], [], [], history=set())
-    assert sections["github"] == []
+    sections = merge({"trending": [], "active": []}, [], [], history=set())
+    assert sections["github_trending"] == []
+    assert sections["github_active"] == []
     assert sections["blogs"] == []
     assert sections["papers"] == []
 
@@ -51,7 +58,7 @@ def test_merge_handles_empty_inputs():
 def test_merge_handles_missing_urls():
     items = [{"name": "no-url-item", "stars": 10}]
     sections = merge(items, [], [], history=set())
-    assert len(sections["github"]) == 1  # No URL = can't dedup, keep it
+    assert len(sections["github_trending"]) == 1
 
 
 def test_extract_urls():

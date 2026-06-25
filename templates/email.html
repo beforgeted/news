@@ -34,34 +34,46 @@
 </div>
 {% endif %}
 
-<h2>🔥 GitHub 热门 AI 项目</h2>
-{% if github %}
-  {% for repo in github %}
+<h2>📈 GitHub 近一周涨星 Top 5</h2>
+{% if github_trending %}
+  {% for repo in github_trending %}
   <div class="item">
     {% set title_text = repo.name_cn ~ "（" ~ repo.name ~ "）" if repo.name_cn else repo.name %}
-    <div class="title">
-      <a href="{{ repo.url }}">{{ title_text }}</a>
-      {% if repo.is_new %}<span class="new-badge">🆕</span>{% endif %}
-    </div>
-    <div class="meta">⭐ {{ repo.stars }} &middot; {{ repo.language }}</div>
-    {% set desc = repo.summary_cn or repo.description or "" %}
+    <div class="title"><a href="{{ repo.url }}">{{ title_text }}</a></div>
+    <div class="meta">📈 +{{ repo.stars_gained | default(0) }} 本周 &middot; ⭐ {{ repo.stars | default(0) }} &middot; {{ repo.language | default('N/A') }}</div>
+    {% set desc = repo.summary_cn or "" %}
     {% if desc %}<div class="desc">{{ desc }}</div>{% endif %}
-    {% for tag in repo.topics[:5] %}<span class="tag">{{ tag }}</span>{% endfor %}
+    {% for tag in (repo.topics | default([]))[:5] %}<span class="tag">{{ tag }}</span>{% endfor %}
   </div>
   {% endfor %}
 {% else %}
-<div class="empty">暂无新项目</div>
+<div class="empty">暂无涨星项目</div>
+{% endif %}
+
+<h2>🔥 GitHub 近月活跃高星 Top 5</h2>
+{% if github_active %}
+  {% for repo in github_active %}
+  <div class="item">
+    {% set title_text = repo.name_cn ~ "（" ~ repo.name ~ "）" if repo.name_cn else repo.name %}
+    <div class="title"><a href="{{ repo.url }}">{{ title_text }}</a></div>
+    <div class="meta">⭐ {{ repo.stars | default(0) }} &middot; {{ repo.language | default('N/A') }}</div>
+    {% set desc = repo.summary_cn or "" %}
+    {% if desc %}<div class="desc">{{ desc }}</div>{% endif %}
+    {% for tag in (repo.topics | default([]))[:5] %}<span class="tag">{{ tag }}</span>{% endfor %}
+  </div>
+  {% endfor %}
+{% else %}
+<div class="empty">暂无活跃项目</div>
 {% endif %}
 
 <h2>📝 AI 公司动态</h2>
 {% if blogs %}
   {% for post in blogs %}
   <div class="item">
-    {% set blog_title = post.title_cn ~ "（" ~ post.title ~ "）" if post.title_cn else post.title %}
+    {% set blog_title = post.title_cn if post.title_cn else post.title %}
     <div class="title"><a href="{{ post.url }}">{{ blog_title }}</a></div>
     <div class="meta">{{ post.source }} &middot; {{ post.date }}</div>
-    {% set blog_desc = post.summary_cn or post.summary or "" %}
-    {% if blog_desc %}<div class="desc">{{ blog_desc }}</div>{% endif %}
+    {% if post.summary_cn %}<div class="desc">{{ post.summary_cn }}</div>{% endif %}
   </div>
   {% endfor %}
 {% else %}
@@ -74,7 +86,8 @@
   <div class="item">
     {% set paper_title = paper.title_cn ~ "（" ~ paper.title ~ "）" if paper.title_cn else paper.title %}
     <div class="title"><a href="{{ paper.url }}">{{ paper_title }}</a></div>
-    <div class="meta">{{ paper.authors | join(', ') }}</div>
+    {% set paper_authors = paper.authors | default([]) %}
+    <div class="meta">{{ paper_authors | join(', ') }}</div>
     {% set paper_desc = paper.summary_cn or paper.abstract or "" %}
     {% if paper_desc %}<div class="desc">{{ paper_desc }}</div>{% endif %}
   </div>

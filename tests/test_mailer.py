@@ -1,5 +1,5 @@
 from unittest.mock import patch, MagicMock
-from src.mailer import send_email
+from src.mailer import parse_recipients, send_email
 
 
 @patch("src.mailer.smtplib.SMTP_SSL")
@@ -24,7 +24,7 @@ def test_send_email_ssl(mock_smtp_class):
 
     call_args = mock_server.sendmail.call_args
     assert call_args[0][0] == "sender@163.com"
-    assert call_args[0][1] == "to@163.com"
+    assert call_args[0][1] == ["to@163.com"]
     assert "Subject Line" in call_args[0][2]
 
 
@@ -45,6 +45,36 @@ def test_send_email_ssl_auth_failure(mock_smtp_class):
     import pytest
     with pytest.raises(Exception):
         send_email("<h1>Test</h1>", "Subject", email_config)
+
+
+def test_parse_recipients_comma_separated():
+    assert parse_recipients("a@x.com, b@x.com ,c@x.com") == [
+        "a@x.com", "b@x.com", "c@x.com"
+    ]
+
+
+def test_parse_recipients_list():
+    assert parse_recipients(["a@x.com", "b@x.com"]) == ["a@x.com", "b@x.com"]
+
+
+@patch("src.mailer.smtplib.SMTP_SSL")
+def test_send_email_multiple_recipients(mock_smtp_class):
+    mock_server = MagicMock()
+    mock_smtp_class.return_value.__enter__.return_value = mock_server
+
+    email_config = {
+        "smtp_host": "smtp.163.com",
+        "smtp_port": 465,
+        "smtp_user": "sender@163.com",
+        "smtp_pass": "secret",
+        "recipient": "one@163.com,two@163.com,three@163.com",
+    }
+
+    send_email("<h1>Test</h1>", "Subject", email_config)
+
+    call_args = mock_server.sendmail.call_args
+    assert call_args[0][1] == ["one@163.com", "two@163.com", "three@163.com"]
+    assert "one@163.com, two@163.com, three@163.com" in call_args[0][2]
 
 
 @patch("src.mailer.smtplib.SMTP")

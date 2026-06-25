@@ -1,19 +1,40 @@
 import re
 import requests
 import feedparser
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
 
-def fetch_blog_posts(config: dict) -> list[dict]:
-    blogs = config if isinstance(config, list) else config.get("blogs", [])
+def _parse_blog_config(config: dict | list) -> tuple[list[dict], int, int]:
+    """解析博客配置，返回 (sources, lookback_days, max_articles)。"""
+    if isinstance(config, list):
+        return config, 3, 10
+    return (
+        config.get("sources", []),
+        config.get("lookback_days", 3),
+        config.get("max_articles", 10),
+    )
+
+
+def _is_within_lookback(date_str: str, lookback_days: int) -> bool:
+    """判断 YYYY-MM-DD 格式的发布日期是否在 lookback_days 天内。"""
+    try:
+        entry_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return False
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).date()
+    return entry_date >= cutoff
+
+
+def fetch_blog_posts(config: dict | list) -> list[dict]:
+    blogs, lookback_days, max_articles = _parse_blog_config(config)
     results = []
 
     for blog in blogs:
         try:
             if blog["type"] == "rss":
-                items = _fetch_rss(blog)
+                items = _fetch_rss(blog, lookback_days)
             elif blog["type"] == "scrape":
                 items = _fetch_scrape(blog)
             else:
@@ -23,13 +44,22 @@ def fetch_blog_posts(config: dict) -> list[dict]:
             print(f"[WARN] Failed to fetch {blog['name']}: {e}")
             continue
 
+    results = [r for r in results if _is_within_lookback(r.get("date", ""), lookback_days)]
     results.sort(key=lambda x: x.get("date", ""), reverse=True)
-    return results[:10]
+    return results[:max_articles]
 
 
-def _fetch_rss(blog: dict) -> list[dict]:
+def _fetch_rss(blog: dict, lookback_days: int) -> list[dict]:
     feed = feedparser.parse(blog["url"])
-    return [_parse_entry(blog["name"], e) for e in feed.entries[:5]]
+    items = []
+    for entry in feed.entries:
+        parsed = _parse_entry(blog["name"], entry)
+        if not _is_within_lookback(parsed["date"], lookback_days):
+            continue
+        items.append(parsed)
+        if len(items) >= 8:
+            break
+    return items
 
 
 def _parse_entry(source: str, entry) -> dict:

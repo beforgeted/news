@@ -11,7 +11,11 @@ from src.collectors.arxiv_papers import fetch_papers
 from src.digest import merge, update_history, load_history
 from src.render import render_html, render_markdown
 from src.mailer import send_email
-from src.llm_summarizer import process_articles, translate_items, summarize_repos, summarize_papers, generate_highlight
+from src.llm_summarizer import (
+    process_articles, translate_items,
+    summarize_trending_repos, summarize_active_repos,
+    summarize_papers, generate_highlight,
+)
 
 
 def main():
@@ -39,11 +43,16 @@ def main():
                 results[key] = future.result()
             except Exception as e:
                 print(f"[ERROR] Collector '{key}' failed: {e}", file=sys.stderr)
-                results[key] = []
+                if key == "github":
+                    results[key] = {"trending": [], "active": []}
+                else:
+                    results[key] = []
                 failed_sources.append(key)
 
     blogs = results.get("blogs", [])
-    github = results.get("github", [])
+    github_data = results.get("github", {"trending": [], "active": []})
+    github_trending = github_data.get("trending", [])
+    github_active = github_data.get("active", [])
     papers = results.get("papers", [])
 
     if os.environ.get("DEEPSEEK_API_KEY"):
@@ -52,17 +61,22 @@ def main():
             blogs = process_articles(blogs)
             print(f"[INFO] LLM filter kept {len(blogs)} articles.")
 
-        if github:
-            print(f"[INFO] Generating summaries for {len(github)} repos...")
-            github = summarize_repos(github)
-            github = translate_items(github, key="name")
+        if github_trending:
+            print(f"[INFO] Summarizing {len(github_trending)} weekly trending repos...")
+            github_trending = summarize_trending_repos(github_trending)
+            github_trending = translate_items(github_trending, key="name")
+
+        if github_active:
+            print(f"[INFO] Summarizing {len(github_active)} active repos...")
+            github_active = summarize_active_repos(github_active)
+            github_active = translate_items(github_active, key="name")
 
         if papers:
             print(f"[INFO] Generating summaries for {len(papers)} papers...")
             papers = summarize_papers(papers)
             papers = translate_items(papers, key="title")
 
-    sections = merge(github, blogs, papers, history)
+    sections = merge({"trending": github_trending, "active": github_active}, blogs, papers, history)
     sections["failed_sources"] = failed_sources
     sections["highlight"] = generate_highlight(sections)
 
@@ -89,7 +103,7 @@ def main():
 
     update_history(sections)
 
-    total = sum(len(sections.get(k, [])) for k in ("github", "blogs", "papers"))
+    total = sum(len(sections.get(k, [])) for k in ("github_trending", "github_active", "blogs", "papers"))
     status = "[WARN]" if failed_sources else "[OK]"
     print(f"{status} Digest sent. {total} items, {len(failed_sources)} source(s) failed.")
 

@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import time
 from openai import OpenAI
 
@@ -84,6 +85,41 @@ def translate_items(items: list[dict], key: str = "title") -> list[dict]:
     return items
 
 
+def _parse_llm_json(text: str) -> dict:
+    """解析 LLM 返回的 JSON，失败时用正则兜底。"""
+    text = text.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        score_m = re.search(r'"score"\s*:\s*(\d+)', text)
+        title_m = re.search(r'"title_cn"\s*:\s*"((?:\\.|[^"\\])*)"', text)
+        summary_m = re.search(r'"summary"\s*:\s*"((?:\\.|[^"\\])*)"', text)
+        return {
+            "score": int(score_m.group(1)) if score_m else 5,
+            "title_cn": title_m.group(1) if title_m else "",
+            "summary": summary_m.group(1) if summary_m else "",
+        }
+
+
+def _summarize_article_cn(title: str, text: str) -> str:
+    """为博客生成约150字中文摘要（评分失败时的兜底）。"""
+    content = f"标题: {title}\n\n正文: {text[:4000]}"
+    try:
+        return _call_llm_with_retry(
+            messages=[
+                {"role": "system", "content": "你是技术博客编辑。用约150字中文总结文章核心内容，只输出摘要正文。"},
+                {"role": "user", "content": content},
+            ],
+            max_tokens=400,
+            temperature=0.3,
+        )
+    except Exception:
+        return ""
+
+
 def score_article(title: str, text: str) -> dict:
     """Score + generate Chinese summary in one LLM call.
 
@@ -100,51 +136,152 @@ def score_article(title: str, text: str) -> dict:
             max_tokens=500,
             temperature=0.3
         )
-        # Handle markdown code-block wrapping
-        result = result.strip()
-        if result.startswith("```"):
-            result = result.split("\n", 1)[1]
-            if result.endswith("```"):
-                result = result[:-3]
-        data = json.loads(result)
+        data = _parse_llm_json(result)
         return {
             "score": int(data.get("score", 5)),
-            "title_cn": data.get("title_cn", "").strip('"\''),
-            "summary_cn": data.get("summary", "")
+            "title_cn": (data.get("title_cn") or "").strip('"\''),
+            "summary_cn": data.get("summary") or data.get("summary_cn") or "",
         }
-    except Exception:
+    except Exception as e:
+        print(f"  [WARN] score_article failed for {title[:40]}: {e}")
         return {"score": 5, "title_cn": "", "summary_cn": ""}
 
 
-def summarize_repos(repos: list[dict]) -> list[dict]:
-    """Generate Chinese summaries for GitHub repos via LLM."""
+def _chinese_ratio(text: str) -> float:
+    """中文字符占比，用于校验输出是否为中文。"""
+    if not text or not text.strip():
+        return 0.0
+    cjk = len(re.findall(r"[\u4e00-\u9fff]", text))
+    latin = len(re.findall(r"[a-zA-Z]", text))
+    total = cjk + latin
+    return cjk / total if total else 0.0
+
+
+def _is_mostly_chinese(text: str, threshold: float = 0.25) -> bool:
+    return _chinese_ratio(text) >= threshold and bool(re.search(r"[\u4e00-\u9fff]", text))
+
+
+def _generate_chinese_summary(
+    system_prompt: str,
+    user_prompt: str,
+    max_tokens: int = 250,
+    max_attempts: int = 3,
+) -> str:
+    """生成中文摘要，不通过校验则带审核反馈重试。"""
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+    result = ""
+
+    for attempt in range(max_attempts):
+        result = _call_llm_with_retry(
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=0.2 if attempt else 0.3,
+        )
+        cleaned = result.strip().strip('"\'')
+        if _is_mostly_chinese(cleaned):
+            return cleaned
+
+        if attempt < max_attempts - 1:
+            print(f"  [WARN] 摘要非中文，重试 ({attempt + 1}/{max_attempts - 1})...")
+            messages = messages + [
+                {"role": "assistant", "content": result},
+                {
+                    "role": "user",
+                    "content": "审核未通过：输出必须为纯中文简介，约100字，禁止英文句子。请重写。",
+                },
+            ]
+
+    return result.strip().strip('"\'') if result else ""
+
+
+def _summarize_repo_cn(repo: dict, style: str) -> str:
+    """为 GitHub 项目生成中文简介，失败时用描述兜底翻译。"""
+    if style == "trending":
+        user_prompt = f"""项目: {repo.get('name', '')}
+本周涨星: {repo.get('stars_gained', 0)}
+总星数: {repo.get('stars', 0)}
+语言: {repo.get('language', 'N/A')}
+标签: {', '.join(repo.get('topics', [])[:8])}
+简介: {repo.get('description', '')}
+
+请用约100字中文介绍：这个项目是什么、为什么值得关注，突出其创新点或近期热门原因。只输出简介正文。"""
+    else:
+        user_prompt = f"""项目: {repo.get('name', '')}
+总星数: {repo.get('stars', 0)}
+语言: {repo.get('language', 'N/A')}
+标签: {', '.join(repo.get('topics', [])[:8])}
+简介: {repo.get('description', '')}
+最近更新: {repo.get('recent_activity', '') or repo.get('pushed_at', '')}
+
+请用约100字中文介绍：这个项目是干什么的、最近更新了什么（新功能/版本/重要改动）。只输出简介正文。"""
+
+    system_prompt = (
+        "你是一个技术编辑，擅长用简洁中文介绍开源项目。"
+        "必须用纯中文输出，禁止英文句子，不要任何前缀或标题。"
+    )
+    summary = _generate_chinese_summary(system_prompt, user_prompt)
+
+    if not _is_mostly_chinese(summary):
+        desc = repo.get("description", "")
+        if desc:
+            try:
+                summary = _call_llm_with_retry(
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "将以下开源项目信息改写为约100字纯中文简介。只输出中文正文。",
+                        },
+                        {"role": "user", "content": f"项目: {repo.get('name', '')}\n简介: {desc}"},
+                    ],
+                    max_tokens=250,
+                    temperature=0.2,
+                ).strip()
+            except Exception:
+                summary = ""
+
+    return summary.strip().strip('"\'')
+
+
+def summarize_trending_repos(repos: list[dict]) -> list[dict]:
+    """为近一周涨星项目生成中文简介（约100字）。"""
     if not os.environ.get("DEEPSEEK_API_KEY"):
         for r in repos:
             r.setdefault("summary_cn", "")
         return repos
 
     for repo in repos:
-        prompt = f"""项目: {repo.get('name', '')}
-星数: {repo.get('stars', 0)}
-语言: {repo.get('language', 'N/A')}
-标签: {', '.join(repo.get('topics', [])[:8])}
-简介: {repo.get('description', '')}
-
-请用约80字中文概括这个项目是什么、为什么值得关注。突出其创新点或热门原因。"""
         try:
-            repo["summary_cn"] = _call_llm_with_retry(
-                messages=[
-                    {"role": "system", "content": "你是一个技术编辑，擅长用简洁中文介绍开源项目。只输出摘要，不要任何前缀。"},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=200,
-                temperature=0.3
-            )
+            repo["summary_cn"] = _summarize_repo_cn(repo, style="trending")
         except Exception as e:
-            print(f"  [WARN] Repo summary failed for {repo.get('name', '?')}: {e}")
+            print(f"  [WARN] Trending repo summary failed for {repo.get('name', '?')}: {e}")
             repo["summary_cn"] = ""
 
     return repos
+
+
+def summarize_active_repos(repos: list[dict]) -> list[dict]:
+    """为近月活跃高星项目生成中文简介（约100字）。"""
+    if not os.environ.get("DEEPSEEK_API_KEY"):
+        for r in repos:
+            r.setdefault("summary_cn", "")
+        return repos
+
+    for repo in repos:
+        try:
+            repo["summary_cn"] = _summarize_repo_cn(repo, style="active")
+        except Exception as e:
+            print(f"  [WARN] Active repo summary failed for {repo.get('name', '?')}: {e}")
+            repo["summary_cn"] = ""
+
+    return repos
+
+
+def summarize_repos(repos: list[dict]) -> list[dict]:
+    """兼容旧接口，默认按涨星榜风格生成摘要。"""
+    return summarize_trending_repos(repos)
 
 
 def summarize_papers(papers: list[dict]) -> list[dict]:
@@ -210,8 +347,8 @@ def process_articles(posts: list[dict]) -> list[dict]:
 
         result = score_article(title, text)
         post["score"] = result["score"]
-        post["title_cn"] = result["title_cn"]
-        post["summary_cn"] = result["summary_cn"]
+        post["title_cn"] = result["title_cn"] or translate_title(title)
+        post["summary_cn"] = result["summary_cn"] or _summarize_article_cn(title, text)
         scored.append(post)
         status = "✓" if result["score"] >= MIN_SCORE else "✗"
         print(f"  [{status} score={result['score']}] {title[:60]}")
@@ -226,20 +363,32 @@ def process_articles(posts: list[dict]) -> list[dict]:
     return kept
 
 
+def _is_complete_highlight(text: str) -> bool:
+    """判断导读是否完整（非截断）。"""
+    text = text.strip()
+    if len(text) < 80:
+        return False
+    return text[-1] in "。！？…"
+
+
 def generate_highlight(sections: dict) -> str:
     """Generate a 2-3 sentence daily highlight based on all content."""
     if not os.environ.get("DEEPSEEK_API_KEY"):
         return ""
 
     blog_count = len(sections.get("blogs", []))
-    gh_count = len(sections.get("github", []))
+    gh_trending = len(sections.get("github_trending", []))
+    gh_active = len(sections.get("github_active", []))
+    gh_count = gh_trending + gh_active
     paper_count = len(sections.get("papers", []))
 
     if blog_count + gh_count + paper_count == 0:
         return ""
 
-    # Build context from top items
-    lines = [f"今日共筛选 {blog_count} 篇博客、{gh_count} 个 GitHub 项目、{paper_count} 篇论文。"]
+    lines = [
+        f"今日共筛选 {blog_count} 篇博客、{gh_trending} 个涨星项目、"
+        f"{gh_active} 个活跃项目、{paper_count} 篇论文。"
+    ]
 
     top_blogs = sections.get("blogs", [])[:3]
     if top_blogs:
@@ -247,30 +396,64 @@ def generate_highlight(sections: dict) -> str:
         for b in top_blogs:
             title = b.get("title_cn") or b.get("title", "")
             score = b.get("score", "?")
-            lines.append(f"  [{score}分] {title}")
+            summary = (b.get("summary_cn") or "")[:120]
+            lines.append(f"  [{score}分] {title} — {summary}")
 
-    top_repos = sections.get("github", [])[:2]
+    top_repos = sections.get("github_trending", [])[:2] + sections.get("github_active", [])[:1]
     if top_repos:
         lines.append("热门项目:")
         for r in top_repos:
-            name = r.get("name", "")
-            stars = r.get("stars", 0)
-            lines.append(f"  {name} ({stars}⭐)")
+            name = r.get("name_cn") or r.get("name", "")
+            summary = (r.get("summary_cn") or r.get("description") or "")[:120]
+            lines.append(f"  {name} — {summary}")
+
+    top_papers = sections.get("papers", [])[:2]
+    if top_papers:
+        lines.append("重点论文:")
+        for p in top_papers:
+            title = p.get("title_cn") or p.get("title", "")
+            summary = (p.get("summary_cn") or "")[:120]
+            lines.append(f"  {title} — {summary}")
 
     context = "\n".join(lines)
-    prompt = f"""{context}
+    system_prompt = (
+        "你是一个 AI 技术编辑，擅长用简洁中文总结每日技术动态。"
+        "必须写完整的 3 句话，约 120-180 字，以句号结尾。"
+        "第1句概括今日主题，第2-3句点名推荐 2-3 个具体内容（含名称）。"
+        "只输出导读正文，不要标题、不要前缀、不要列表符号。"
+    )
+    user_prompt = f"""以下是今日 digest 的精选内容摘要：
 
-请用 3 句话总结今日 AI 技术动态，重点推荐 2-3 篇最值得读的内容。语言简洁有洞察力，约 100-150 字。"""
+{context}
+
+请写一段完整的「今日导读」。"""
 
     try:
-        result = _call_llm_with_retry(
-            messages=[
-                {"role": "system", "content": "你是一个 AI 技术编辑，擅长用简洁中文总结每日技术动态。只输出总结，不要任何前缀。"},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=250,
-            temperature=0.5
-        )
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        result = ""
+
+        for attempt in range(3):
+            result = _call_llm_with_retry(
+                messages=messages,
+                max_tokens=512,
+                temperature=0.4 if attempt else 0.5,
+            ).strip().strip('"\'')
+            if _is_complete_highlight(result):
+                return result
+            if attempt < 2:
+                print(f"  [WARN] 导读不完整，重试 ({attempt + 1}/2)...")
+                messages = messages + [
+                    {"role": "assistant", "content": result},
+                    {
+                        "role": "user",
+                        "content": "上次输出不完整或未写完。请重写完整导读，必须包含具体推荐并以句号结尾。",
+                    },
+                ]
+
         return result
-    except Exception:
+    except Exception as e:
+        print(f"  [WARN] generate_highlight failed: {e}")
         return ""

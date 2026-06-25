@@ -3,11 +3,22 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 
+def parse_recipients(value: str | list[str]) -> list[str]:
+    """将单个邮箱、逗号分隔字符串或列表统一解析为收件人列表。"""
+    if isinstance(value, list):
+        return [addr.strip() for addr in value if addr and str(addr).strip()]
+    return [addr.strip() for addr in str(value).split(",") if addr.strip()]
+
+
 def send_email(html_content: str, subject: str, email_config: dict) -> bool:
+    recipients = parse_recipients(
+        email_config.get("recipients") or email_config["recipient"]
+    )
+
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = email_config["smtp_user"]
-    msg["To"] = email_config["recipient"]
+    msg["To"] = ", ".join(recipients)
 
     msg.attach(MIMEText(html_content, "html", "utf-8"))
 
@@ -21,7 +32,7 @@ def send_email(html_content: str, subject: str, email_config: dict) -> bool:
             server.login(email_config["smtp_user"], email_config["smtp_pass"])
             server.sendmail(
                 email_config["smtp_user"],
-                email_config["recipient"],
+                recipients,
                 msg.as_string()
             )
     else:
@@ -30,7 +41,7 @@ def send_email(html_content: str, subject: str, email_config: dict) -> bool:
             server.login(email_config["smtp_user"], email_config["smtp_pass"])
             server.sendmail(
                 email_config["smtp_user"],
-                email_config["recipient"],
+                recipients,
                 msg.as_string()
             )
 

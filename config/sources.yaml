@@ -1,8 +1,11 @@
 github:
-  keywords: [ai agent, llm, language model, machine learning, rag, prompt engineering]
-  max_results: 10
+  trending_limit: 5
+  active_limit: 5
 
 blogs:
+  lookback_days: 3
+  max_articles: 10
+  sources:
   - name: OpenAI
     type: rss
     url: https://openai.com/blog/rss.xml
@@ -23,7 +26,7 @@ blogs:
 arxiv:
   categories: [cs.AI, cs.CL]
   max_results: 5
-  keywords: [llm, agent, language model, transformer]
+  keywords: [llm, agent, rag, agentic, mcp, language model, transformer, harness]
 
 email:
   smtp_host: smtp.163.com

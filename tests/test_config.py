@@ -7,8 +7,11 @@ from src.config import load_config
 def test_load_config_defaults():
     config = load_config()
     assert "github" in config
-    assert config["github"]["max_results"] == 10
-    assert len(config["blogs"]) == 5
+    assert config["github"]["trending_limit"] == 5
+    assert config["github"]["active_limit"] == 5
+    assert config["blogs"]["lookback_days"] == 3
+    assert len(config["blogs"]["sources"]) == 5
+    assert config["blogs"]["max_articles"] == 10
     assert config["arxiv"]["categories"] == ["cs.AI", "cs.CL"]
 
 

@@ -26,24 +26,39 @@ def extract_urls(items: list[dict]) -> set:
     return {item["url"] for item in items if item.get("url")}
 
 
-def merge(github_items: list[dict], blog_items: list[dict], arxiv_items: list[dict],
+def merge(github_data: dict | list, blog_items: list[dict], arxiv_items: list[dict],
           history: set | None = None) -> dict:
     if history is None:
         history = load_history()
 
-    def dedup(items: list[dict]) -> list[dict]:
+    def dedup(items: list[dict], check_history: bool = True) -> list[dict]:
         seen = set()
         result = []
         for item in items:
             url = item.get("url", "")
-            if url and (url in history or url in seen):
+            if url and url in seen:
                 continue
-            seen.add(url)
+            if check_history and url and url in history:
+                continue
+            if url:
+                seen.add(url)
             result.append(item)
         return result
 
+    if isinstance(github_data, dict):
+        github_trending = dedup(github_data.get("trending", []), check_history=False)
+        trending_urls = {r.get("url") for r in github_trending if r.get("url")}
+        github_active = [
+            r for r in dedup(github_data.get("active", []), check_history=False)
+            if r.get("url") not in trending_urls
+        ]
+    else:
+        github_trending = dedup(github_data if isinstance(github_data, list) else [], check_history=False)
+        github_active = []
+
     return {
-        "github": dedup(github_items),
+        "github_trending": github_trending,
+        "github_active": github_active,
         "blogs": dedup(blog_items),
         "papers": dedup(arxiv_items),
         "failed_sources": []
@@ -52,7 +67,7 @@ def merge(github_items: list[dict], blog_items: list[dict], arxiv_items: list[di
 
 def update_history(sections: dict) -> None:
     all_urls = set()
-    for key in ("github", "blogs", "papers"):
+    for key in ("blogs", "papers"):
         all_urls |= extract_urls(sections.get(key, []))
     history = load_history()
     history |= all_urls

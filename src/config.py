@@ -24,4 +24,7 @@ def load_config(config_path: str | None = None) -> dict:
         if os.environ.get(env_key):
             config["email"][key] = os.environ[env_key]
 
+    if os.environ.get("RECIPIENTS"):
+        config["email"]["recipients"] = os.environ["RECIPIENTS"]
+
     return config
