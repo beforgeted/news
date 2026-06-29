@@ -19,7 +19,13 @@ def test_is_mostly_chinese():
 
 
 def test_is_complete_highlight():
-    assert _is_complete_highlight("今日聚焦 LLM 可解释性进展，推荐 Anthropic 新文与 Hermes Agent 项目，值得关注。")
+    complete = (
+        "今日 AI 动态聚焦模型可解释性与 Agent 框架演进。"
+        "推荐 Anthropic 关于 Claude 思维链的新研究，以及 Hermes Agent v0.17 的重大版本更新。"
+        "此外，NVIDIA NeMo AutoModel 在 Transformers 微调效率上的优化同样值得开发者关注。"
+    )
+    assert len(complete) >= 80
+    assert _is_complete_highlight(complete)
     assert not _is_complete_highlight("今日技术动态聚焦于模型可解释性，重点推荐")
     assert not _is_complete_highlight("太短。")
 
