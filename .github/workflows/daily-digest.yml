@@ -1,8 +1,8 @@
 name: AI Daily Digest
 
 on:
-  schedule:
-    - cron: "0 1 * * *"  # UTC 01:00 = 北京时间 09:00
+  # schedule:
+  #   - cron: "0 1 * * *"  # UTC 01:00 = 北京时间 09:00
   workflow_dispatch:      # 允许手动触发
 
 jobs:
